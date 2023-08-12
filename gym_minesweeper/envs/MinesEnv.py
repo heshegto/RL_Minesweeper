@@ -20,7 +20,8 @@ class MinesweeperGame(gymnasium.Env):
 
         # Counting window size
         self.cell_size = 15
-        self.window_height =
+        self.window_height = self.cell_size * self.height
+        self.window_width = self.cell_size * self.width
 
         # Observations are dictionaries with the agent's and the target's location.
         # Each location is encoded as an element of {0, ..., `size`}^2, i.e. MultiDiscrete([size, size]).
@@ -79,7 +80,7 @@ class MinesweeperGame(gymnasium.Env):
         info = self._get_info()
 
         if self.render_mode == "human":
-            self._render_frame()
+            self.render()
 
         return observation, info
 
@@ -96,13 +97,15 @@ class MinesweeperGame(gymnasium.Env):
 
     def step(self, action):
         """Make move on player's desk"""
+        reward = 0
 
         x, y = int(action[0]), int(action[1])
         if x not in range(self.height) or y not in range(self.width):
             raise Exception("Coordinates are out of range")
 
         if self.playerDesk[x][y] != -2:
-            raise Exception("This cell is already opened")
+            reward = -1
+            print("This cell is already opened")
 
         if self.terminated:
             raise Exception("Game over. Start new one")
@@ -118,10 +121,9 @@ class MinesweeperGame(gymnasium.Env):
                         if self.playerDesk[x_neighbor][y_neighbor] == -2:
                             self.step([x_neighbor, y_neighbor])
 
-        reward = 0
         if self.desk[x][y] == -1:
             self.terminated = True
-            reward = -3
+            reward = -5
             print("You lose")
 
         is_end = True
@@ -133,62 +135,62 @@ class MinesweeperGame(gymnasium.Env):
 
         if is_end:
             self.terminated = True
-            reward = 5
+            reward = 10
             print("You win")
 
         observation = self._get_obs()
         info = self._get_info()
 
         if self.render_mode == "human":
-            self._render_frame()
+            self.render()
 
         return observation, reward, self.terminated, False, info
 
     def render(self):
-        if self.render_mode == "rgb_array":
-            return self._render_frame()
-
-    def _render_frame(self):
+        # Creating display
         if self.window is None and self.render_mode == "human":
             pygame.init()
             pygame.display.init()
-            self.window = pygame.display.set_mode((self.window_size, self.window_size))
+            self.window = pygame.display.set_mode((self.window_width, self.window_height))
         if self.clock is None and self.render_mode == "human":
             self.clock = pygame.time.Clock()
 
-        canvas = pygame.Surface((self.window_size, self.window_size))
+        # Creating blank canvas
+        canvas = pygame.Surface((self.window_width, self.window_height))
         canvas.fill((255, 255, 255))
-        pix_square_size = (
-            self.window_size / max(self.height, self.width)
-        )  # The size of a single grid square in pixels
 
-        # Finally, add some gridlines
-        for x in range(max(self.height, self.width) + 1):
+        # Add some gridlines to canvas
+        for x in range(self.width + 1):
             pygame.draw.line(
                 canvas,
                 0,
-                (0, pix_square_size * x),
-                (self.window_size, pix_square_size * x),
-                width=3,
+                (self.cell_size * x, 0),
+                (self.cell_size * x, self.window_height),
+                width=2,
             )
+        for x in range(self.height + 1):
             pygame.draw.line(
                 canvas,
                 0,
-                (pix_square_size * x, 0),
-                (pix_square_size * x, self.window_size),
-                width=3,
+                (0, self.cell_size * x),
+                (self.window_width, self.cell_size * x),
+                width=2,
             )
 
-        font = pygame.font.Font(None, 100)
+        # Printing result of step on canvas
+        font = pygame.font.Font(None, 20)
 
-        # def draw_digit(digit, xs, y):
-        #     digit_text = str(digit)
-        #     text_surface = font.render(digit_text,True, (255, 255, 255))
-        #     canvas.blit(text_surface, xs, y)
-        #
-        # for i in range(self.height):
-        #     for j in range(self.width):
-        #         draw_digit(self.playerDesk[i][j], (0.5 + i) * pix_square_size, (0.5 + j) * pix_square_size)
+        def draw_digit(digit, xs, y):
+            digit_text = str(digit)
+            text_surface = font.render(digit_text, True, (0, 0, 0))
+            canvas.blit(text_surface, (xs, y))
+
+        for i in range(self.height):
+            for j in range(self.width):
+                if self.playerDesk[i][j] == -1:
+                    draw_digit('B', (0.1 + i) * self.cell_size, (0.1 + j) * self.cell_size)
+                elif self.playerDesk[i][j] != -2:
+                    draw_digit(self.playerDesk[i][j], (0.1 + i) * self.cell_size, (0.1 + j) * self.cell_size)
 
         if self.render_mode == "human":
             # The following line copies our drawings from `canvas` to the visible window
