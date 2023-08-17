@@ -1,10 +1,8 @@
-import gymnasium
-from gymnasium import spaces
+from gymnasium import spaces, Env
 import pygame
 import numpy as np
 
-
-class MinesweeperGame(gymnasium.Env):
+class MinesweeperGame(Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 8}
 
     def __init__(self, render_mode=None, height=5, width=5, mines=5) -> None:
@@ -74,7 +72,7 @@ class MinesweeperGame(gymnasium.Env):
         for i in range(self.height):
             for j in range(self.width):
                 if self.desk[i][j] != -1:
-                    self.desk[i][j] = self.__get_mines_around(i, j)
+                    self.desk[i][j] = self._get_mines_around(i, j)
 
         observation = self._get_obs()
         info = self._get_info()
@@ -84,7 +82,7 @@ class MinesweeperGame(gymnasium.Env):
 
         return observation, info
 
-    def __get_mines_around(self, x: int, y: int) -> int:
+    def _get_mines_around(self, x: int, y: int) -> int:
         amount = 0
         for x_ in range(-1, 2):
             for y_ in range(-1, 2):
@@ -147,9 +145,9 @@ class MinesweeperGame(gymnasium.Env):
         return observation, reward, self.terminated, False, info
 
     def render(self):
+        pygame.init()
         # Creating display
         if self.window is None and self.render_mode == "human":
-            pygame.init()
             pygame.display.init()
             self.window = pygame.display.set_mode((self.window_width, self.window_height))
         if self.clock is None and self.render_mode == "human":
@@ -211,5 +209,4 @@ class MinesweeperGame(gymnasium.Env):
             pygame.display.quit()
             pygame.quit()
 
-    def __str__(self):
-        return f"Minesweeper Game for desk: {self.desk}"
+
